@@ -1,0 +1,48 @@
+<%= render "shared/navbar" %>
+
+<div class="min-h-screen bg-gray-100 p-6">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-3xl font-bold text-gray-800">Customer Management</h1>
+
+      <%= link_to "Add Customer", new_customer_path,
+          class: "rounded-lg bg-blue-600 px-4 py-2 font-semibold text-white hover:bg-blue-700 transition" %>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-md overflow-hidden">
+      <table class="w-full text-left">
+        <thead class="bg-gray-50 text-gray-600 text-sm">
+          <tr>
+            <th class="px-4 py-3">Name</th>
+            <th class="px-4 py-3">Contact</th>
+            <th class="px-4 py-3">Address</th>
+            <th class="px-4 py-3">Added By</th>
+            <th class="px-4 py-3"></th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% @customers.each do |c| %>
+            <tr class="border-t">
+              <td class="px-4 py-3 font-medium text-gray-900"><%= c.full_name %></td>
+              <td class="px-4 py-3 text-gray-700"><%= c.contact_number %></td>
+              <td class="px-4 py-3 text-gray-700"><%= c.address %></td>
+              <td class="px-4 py-3 text-gray-700"><%= c.added_by&.full_name %></td>
+              <td class="px-4 py-3 text-right">
+                <%= link_to "View", customer_path(c), class: "text-blue-600 hover:underline" %>
+              </td>
+            </tr>
+          <% end %>
+
+          <% if @customers.empty? %>
+            <tr>
+              <td colspan="5" class="px-4 py-10 text-center text-gray-500">
+                No customers yet. Click “Add Customer” to create one.
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

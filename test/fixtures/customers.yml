@@ -1,0 +1,27 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  last_name: MyString
+  first_name: MyString
+  middle_initial: MyString
+  date_of_birth: 2026-02-20
+  address: MyText
+  contact_number: MyString
+  id_submitted: MyString
+  co_maker: MyString
+  collateral: MyString
+  total_no_of_loans: 1
+  added_by: one
+
+two:
+  last_name: MyString
+  first_name: MyString
+  middle_initial: MyString
+  date_of_birth: 2026-02-20
+  address: MyText
+  contact_number: MyString
+  id_submitted: MyString
+  co_maker: MyString
+  collateral: MyString
+  total_no_of_loans: 1
+  added_by: two
