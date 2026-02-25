@@ -9,7 +9,8 @@
 
 # Ignore all environment files.
 /.env*
-
+.env
+.env.*
 # Ignore all logfiles and tempfiles.
 /log/*
 /tmp/*
@@ -36,6 +37,7 @@
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
-
+.vendor
 /vendor/bundle/
+
 
