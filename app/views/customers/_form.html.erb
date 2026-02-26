@@ -179,11 +179,12 @@
 
       <%# Drop zone %>
       <div id="id-upload-area"
-           class="relative flex min-h-[200px] cursor-pointer flex-col items-center justify-center
-                  rounded-xl border-2 border-dashed border-gray-300 bg-gray-50
-                  transition hover:border-blue-400 hover:bg-blue-50"
-           onclick="document.getElementById('id_image_input').click()">
-
+     data-existing-url="<%= customer.id_image.attached? ? url_for(customer.id_image) : "" %>"
+     data-existing-filename="<%= customer.id_image.attached? ? customer.id_image.filename.to_s : "" %>"
+     class="relative flex min-h-[200px] cursor-pointer flex-col items-center justify-center
+            rounded-xl border-2 border-dashed border-gray-300 bg-gray-50
+            transition hover:border-blue-400 hover:bg-blue-50"
+     onclick="document.getElementById('id_image_input').click()">
         <%# Empty state icon + text %>
         <div id="upload-placeholder" class="flex flex-col items-center gap-2 text-center px-6 py-8">
           <div class="flex h-14 w-14 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
@@ -268,67 +269,89 @@
     <%= link_to "Cancel", customers_path,
         class: "rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700
                 shadow-sm hover:bg-gray-50 transition" %>
-    <%= f.submit class: "cursor-pointer rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white
-                         shadow-sm hover:bg-blue-700 active:scale-95 transition" %>
+    <%= f.submit(@customer.persisted? ? "Update Customer" : "Add Customer",
+      class: "cursor-pointer rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition") %>
   </div>
 <% end %>
 
 <%# ── ID Upload JS ── %>
 <script>
-  const uploadArea = document.getElementById('id-upload-area');
-  const placeholder = document.getElementById('upload-placeholder');
-  const preview    = document.getElementById('upload-preview');
-  const previewImg = document.getElementById('id-preview-img');
+  document.addEventListener('turbo:load', () => {
+    const uploadArea = document.getElementById('id-upload-area');
+    if (!uploadArea) return;
 
-  // Drag-and-drop
-  uploadArea.addEventListener('dragover', e => {
-    e.preventDefault();
-    uploadArea.classList.add('border-blue-500', 'bg-blue-50');
-  });
-  uploadArea.addEventListener('dragleave', () => {
-    uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
-  });
-  uploadArea.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-      // Assign to the actual file input for form submission
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      document.getElementById('id_image_input').files = dt.files;
-      renderPreview(file);
-    }
-  });
+    // prevent duplicate bindings (important for Turbo)
+    if (uploadArea.dataset.bound === "1") return;
+    uploadArea.dataset.bound = "1";
 
-  function handleIdUpload(input) {
-    if (input.files && input.files[0]) {
-      renderPreview(input.files[0]);
-    }
-  }
+    const placeholder = document.getElementById('upload-placeholder');
+    const preview     = document.getElementById('upload-preview');
+    const previewImg  = document.getElementById('id-preview-img');
+    const input       = document.getElementById('id_image_input');
 
-  function renderPreview(file) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      previewImg.src = e.target.result;
-      document.getElementById('preview-filename').textContent = file.name;
-      document.getElementById('preview-filesize').textContent = formatBytes(file.size);
+    // preload existing image (edit page)
+    const existingUrl = uploadArea.dataset.existingUrl;
+    const existingFilename = uploadArea.dataset.existingFilename;
+
+    if (existingUrl) {
+      previewImg.src = existingUrl;
+      document.getElementById('preview-filename').textContent =
+        existingFilename || "Current ID image";
+      document.getElementById('preview-filesize').textContent = "Existing file";
       placeholder.classList.add('hidden');
       preview.classList.remove('hidden');
+    }
+
+    // Drag-and-drop
+    uploadArea.addEventListener('dragover', e => {
+      e.preventDefault();
+      uploadArea.classList.add('border-blue-500', 'bg-blue-50');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+    });
+
+    uploadArea.addEventListener('drop', e => {
+      e.preventDefault();
+      uploadArea.classList.remove('border-blue-500', 'bg-blue-50');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type.startsWith('image/')) {
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        renderPreview(file);
+      }
+    });
+
+    // expose these so your inline onchange/onclick still work
+    window.handleIdUpload = function(el) {
+      if (el.files && el.files[0]) renderPreview(el.files[0]);
     };
-    reader.readAsDataURL(file);
-  }
 
-  function clearIdPreview() {
-    document.getElementById('id_image_input').value = '';
-    previewImg.src = '';
-    preview.classList.add('hidden');
-    placeholder.classList.remove('hidden');
-  }
+    window.clearIdPreview = function() {
+      input.value = '';
+      previewImg.src = '';
+      preview.classList.add('hidden');
+      placeholder.classList.remove('hidden');
+    };
 
-  function formatBytes(bytes) {
-    if (bytes < 1024) return bytes + ' B';
-    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    return (bytes / 1048576).toFixed(1) + ' MB';
-  }
+    function renderPreview(file) {
+      const reader = new FileReader();
+      reader.onload = e => {
+        previewImg.src = e.target.result;
+        document.getElementById('preview-filename').textContent = file.name;
+        document.getElementById('preview-filesize').textContent = formatBytes(file.size);
+        placeholder.classList.add('hidden');
+        preview.classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+  });
 </script>

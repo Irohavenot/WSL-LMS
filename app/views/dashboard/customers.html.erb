@@ -27,7 +27,7 @@
               <td class="px-4 py-3 font-medium text-gray-900"><%= c.full_name %></td>
               <td class="px-4 py-3 text-gray-700"><%= c.contact_number %></td>
               <td class="px-4 py-3 text-gray-700"><%= c.address %></td>
-              <td class="px-4 py-3 text-gray-700"><%= c.added_by&.full_name %></td>
+              <td class="px-4 py-3 text-gray-700"><%= c.added_by&.full_name %></td> 
               <td class="px-4 py-3 text-right">
                 <%= link_to "View", customer_path(c), class: "text-blue-600 hover:underline" %>
               </td>
