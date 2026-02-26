@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_25_022355) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_26_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -59,6 +59,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_022355) do
     t.index ["added_by_id"], name: "index_customers_on_added_by_id"
   end
 
+  create_table "loans", force: :cascade do |t|
+    t.bigint "added_by_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "customer_id", null: false
+    t.datetime "date_added", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.date "date_issued"
+    t.decimal "interest_rate", precision: 5, scale: 4, null: false
+    t.bigint "issued_by_id"
+    t.decimal "loan_amount", precision: 12, scale: 2, null: false
+    t.date "maturity_date"
+    t.decimal "pay_per_session", precision: 12, scale: 2
+    t.decimal "remaining_balance", precision: 12, scale: 2
+    t.string "session_type", default: "weekly", null: false
+    t.string "status", default: "active", null: false
+    t.decimal "total_balance", precision: 12, scale: 2
+    t.integer "total_months_to_pay", default: 2, null: false
+    t.integer "total_sessions"
+    t.datetime "updated_at", null: false
+    t.index ["added_by_id"], name: "index_loans_on_added_by_id"
+    t.index ["customer_id"], name: "index_loans_on_customer_id"
+    t.index ["issued_by_id"], name: "index_loans_on_issued_by_id"
+    t.index ["maturity_date"], name: "index_loans_on_maturity_date"
+    t.index ["status"], name: "index_loans_on_status"
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "email"
@@ -72,4 +97,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_25_022355) do
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "customers", "users", column: "added_by_id"
+  add_foreign_key "loans", "customers"
+  add_foreign_key "loans", "users", column: "added_by_id"
+  add_foreign_key "loans", "users", column: "issued_by_id"
 end

@@ -1,0 +1,529 @@
+<%# app/views/loans/_form.html.erb %>
+<%# Use loan_path for persisted loans, customer_loans_path for new ones %>
+<%= form_with model: loan.persisted? ? loan : [@customer, loan], class: "space-y-8" do |f| %>
+
+  <%# ── Error Banner ── %>
+  <% if loan.errors.any? %>
+    <div class="flex gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+      <svg class="mt-0.5 h-5 w-5 shrink-0 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-.75-5.75a.75.75 0 001.5 0V8a.75.75 0 00-1.5 0v4.25zm.75 2.75a.75.75 0 100-1.5.75.75 0 000 1.5z" clip-rule="evenodd"/>
+      </svg>
+      <div>
+        <p class="text-sm font-semibold text-red-700">Please fix the following errors:</p>
+        <ul class="mt-1 list-disc pl-4 text-sm text-red-600 space-y-0.5">
+          <% loan.errors.full_messages.each do |msg| %>
+            <li><%= msg %></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <%# ── Section 1: Issuance Info ── %>
+  <fieldset class="space-y-5">
+    <legend class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">1</span>
+      Issuance Information
+    </legend>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <%# Date Added — auto-filled, read-only %>
+      <div class="space-y-1">
+        <label class="block text-sm font-medium text-gray-700">
+          Date Added
+          <span class="ml-1 text-xs font-normal text-gray-400">(auto-filled)</span>
+        </label>
+        <input type="text"
+               value="<%= (loan.date_added || Time.current).strftime("%B %d, %Y %I:%M %p") %>"
+               disabled
+               class="block w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-500 shadow-sm cursor-not-allowed">
+      </div>
+
+      <%# Date Issued %>
+      <div class="space-y-1">
+        <%= f.label :date_issued, class: "block text-sm font-medium text-gray-700" %>
+        <%= f.date_field :date_issued,
+            class: "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm
+                    focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+      </div>
+    </div>
+
+    <%# Issued By %>
+    <div class="space-y-1">
+      <%= f.label :issued_by_id, "Issued By (Collector)", class: "block text-sm font-medium text-gray-700" %>
+      <div class="relative">
+        <%= f.select :issued_by_id,
+            options_from_collection_for_select(User.order(:last_name), :id, ->(u){ "#{u.last_name}, #{u.first_name}" }, loan.issued_by_id),
+            { prompt: "Select collector / admin…" },
+            class: "block w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-9 text-sm shadow-sm
+                    focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </span>
+      </div>
+    </div>
+
+    <%# Proof of Issue upload %>
+    <div class="space-y-2">
+      <label class="block text-sm font-medium text-gray-700">
+        Proof of Issue
+        <span class="ml-1 text-xs font-normal text-gray-400">(optional — image)</span>
+      </label>
+
+      <div id="proof-upload-area"
+           data-existing-url="<%= loan.proof_of_issue.attached? ? url_for(loan.proof_of_issue) : "" %>"
+           data-existing-filename="<%= loan.proof_of_issue.attached? ? loan.proof_of_issue.filename.to_s : "" %>"
+           class="relative flex min-h-[160px] cursor-pointer flex-col items-center justify-center
+                  rounded-xl border-2 border-dashed border-gray-300 bg-gray-50
+                  transition hover:border-blue-400 hover:bg-blue-50"
+           onclick="document.getElementById('proof_of_issue_input').click()">
+
+        <div id="proof-placeholder" class="flex flex-col items-center gap-2 text-center px-6 py-6">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+            <svg class="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-700">Upload proof of issue</p>
+            <p class="mt-0.5 text-xs text-gray-400">Click or drag & drop · JPG, PNG, WEBP · max 5 MB</p>
+          </div>
+          <span class="mt-1 inline-flex items-center rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition">
+            Choose File
+          </span>
+        </div>
+
+        <div id="proof-preview" class="hidden w-full p-4">
+          <div class="mx-auto max-w-xs">
+            <div class="overflow-hidden rounded-xl border border-gray-200 shadow">
+              <img id="proof-preview-img" src="" alt="Proof preview" class="h-40 w-full object-cover object-center">
+            </div>
+            <div class="mt-2 flex items-center justify-between">
+              <div>
+                <p id="proof-filename" class="truncate text-xs font-medium text-gray-700 max-w-[180px]">filename.jpg</p>
+                <p id="proof-filesize" class="text-[10px] text-gray-400">0 KB</p>
+              </div>
+              <button type="button"
+                      onclick="event.stopPropagation(); clearProofPreview()"
+                      class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-500
+                             hover:bg-red-100 hover:text-red-600 transition"
+                      title="Remove">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%= f.file_field :proof_of_issue,
+          id: "proof_of_issue_input",
+          accept: "image/jpeg,image/png,image/webp",
+          class: "sr-only",
+          onchange: "handleProofUpload(this)" %>
+    </div>
+  </fieldset>
+
+  <hr class="border-gray-100">
+
+  <%# ── Section 2: Loan Details ── %>
+  <fieldset class="space-y-5" id="loan-details-section">
+    <legend class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">2</span>
+      Loan Details
+    </legend>
+
+    <%# Loan Amount + Months %>
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <div class="space-y-1">
+        <%= f.label :loan_amount, class: "block text-sm font-medium text-gray-700" %>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">₱</span>
+          <%= f.number_field :loan_amount,
+              min: 0, step: "0.01",
+              placeholder: "0.00",
+              id: "loan_amount",
+              class: "block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-7 pr-3 text-sm shadow-sm
+                      placeholder:text-gray-400
+                      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+        </div>
+      </div>
+
+      <div class="space-y-1">
+        <%= f.label :total_months_to_pay, "Total Months to Pay", class: "block text-sm font-medium text-gray-700" %>
+        <%= f.number_field :total_months_to_pay,
+            min: 1, step: 1,
+            value: loan.total_months_to_pay || 2,
+            id: "total_months",
+            class: "block w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm shadow-sm
+                    placeholder:text-gray-400
+                    focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+      </div>
+    </div>
+
+    <%# Session Type %>
+    <div class="space-y-2">
+      <%= f.label :session_type, "Session Type", class: "block text-sm font-medium text-gray-700" %>
+      <div class="flex gap-3">
+        <% [["weekly", "Weekly", "Every week (4 sessions/month)"], ["daily", "Daily", "6 days/week (26 sessions/month)"]].each do |value, label, desc| %>
+          <label class="relative flex flex-1 cursor-pointer flex-col gap-1 rounded-xl border-2 border-gray-200 bg-white p-4 transition
+                        has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50">
+            <%= f.radio_button :session_type, value,
+                id: "session_#{value}",
+                class: "sr-only" %>
+            <span class="text-sm font-semibold text-gray-800"><%= label %></span>
+            <span class="text-xs text-gray-400"><%= desc %></span>
+          </label>
+        <% end %>
+      </div>
+    </div>
+
+    <%# Interest Rate %>
+    <div class="space-y-1">
+      <%= f.label :interest_rate, class: "block text-sm font-medium text-gray-700" do %>
+        Interest Rate
+        <span class="ml-1 text-xs font-normal text-gray-400">(default: 8% per month)</span>
+      <% end %>
+      <div class="relative">
+        <%# Store as decimal in DB (0.16), display as percentage (16) %>
+        <input type="number"
+               name="loan[interest_rate]"
+               id="interest_rate_pct"
+               min="0" max="100" step="0.01"
+               value="<%= ((loan.interest_rate || 0.16) * 100).round(2) %>"
+               placeholder="16.00"
+               class="block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-3 pr-10 text-sm shadow-sm
+                      placeholder:text-gray-400
+                      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition">
+        <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">%</span>
+        <%# Hidden field that sends the decimal value to Rails %>
+        <input type="hidden" name="loan[interest_rate]" id="interest_rate_decimal"
+               value="<%= loan.interest_rate || 0.16 %>">
+      </div>
+      <p class="text-xs text-gray-400">Auto-set to 8% × months. You can override this.</p>
+    </div>
+  </fieldset>
+
+  <hr class="border-gray-100">
+
+  <%# ── Section 3: Computed Summary ── %>
+  <fieldset class="space-y-5">
+    <legend class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">3</span>
+      Computed Summary
+      <span class="text-[10px] font-normal normal-case tracking-normal text-gray-400">(auto-calculated — read only)</span>
+    </legend>
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <% summary_fields = [
+        ["Total Sessions",   "calc-total-sessions",   loan.total_sessions,   nil],
+        ["Pay Per Session",  "calc-pay-per-session",  loan.pay_per_session,  "₱"],
+        ["Total Balance",    "calc-total-balance",    loan.total_balance,    "₱"],
+        ["Remaining Balance","calc-remaining-balance",loan.remaining_balance,"₱"],
+        ["Maturity Date",    "calc-maturity-date",    loan.maturity_date,    nil],
+      ] %>
+      <% summary_fields.each do |label, id, value, prefix| %>
+        <div class="rounded-xl border border-gray-100 bg-gray-50 p-3">
+          <p class="text-[11px] font-medium uppercase tracking-wide text-gray-400"><%= label %></p>
+          <p id="<%= id %>" class="mt-0.5 text-base font-semibold text-gray-800">
+            <% if value.present? %>
+              <%= prefix %><%= value.is_a?(Numeric) ? number_with_precision(value, precision: 2, delimiter: ",") : value %>
+            <% else %>
+              <span class="text-gray-300">—</span>
+            <% end %>
+          </p>
+        </div>
+      <% end %>
+    </div>
+
+    <p class="text-xs text-gray-400">
+      Values update automatically when you save. Maturity date = Date Issued + (<%= Loan::DAYS_PER_MONTH %> days × months).
+    </p>
+  </fieldset>
+
+  <hr class="border-gray-100">
+
+  <%# ── Section 4: Status + QR ── %>
+  <fieldset class="space-y-5">
+    <legend class="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-gray-400">
+      <span class="flex h-5 w-5 items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">4</span>
+      Status & QR Code
+    </legend>
+
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <%# Status %>
+      <div class="space-y-1">
+        <%= f.label :status, class: "block text-sm font-medium text-gray-700" %>
+        <div class="relative">
+          <%= f.select :status,
+              options_for_select([
+                ["Active",          "active"],
+                ["Overdue",         "overdue"],
+                ["Completed",       "completed"],
+                ["Completed (L)",   "completed_late"]
+              ], loan.status || "active"),
+              {},
+              class: "block w-full appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-9 text-sm shadow-sm
+                      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+          <span class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+            </svg>
+          </span>
+        </div>
+        <p class="text-xs text-gray-400">Status auto-updates to "Overdue" past maturity date on save.</p>
+      </div>
+
+      <%# Remaining Balance (editable for payment tracking) %>
+      <div class="space-y-1">
+        <%= f.label :remaining_balance, class: "block text-sm font-medium text-gray-700" do %>
+          Remaining Balance
+          <span class="ml-1 text-xs font-normal text-gray-400">(update after payments)</span>
+        <% end %>
+        <div class="relative">
+          <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-400">₱</span>
+          <%= f.number_field :remaining_balance,
+              min: 0, step: "0.01",
+              placeholder: "0.00",
+              class: "block w-full rounded-lg border border-gray-300 bg-white py-2.5 pl-7 pr-3 text-sm shadow-sm
+                      placeholder:text-gray-400
+                      focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition" %>
+        </div>
+      </div>
+    </div>
+
+    <%# QR Image Upload %>
+    <div class="space-y-2">
+      <label class="block text-sm font-medium text-gray-700">
+        QR Code Image
+        <span class="ml-1 text-xs font-normal text-gray-400">(optional)</span>
+      </label>
+
+      <div id="qr-upload-area"
+           data-existing-url="<%= loan.qr_image.attached? ? url_for(loan.qr_image) : "" %>"
+           data-existing-filename="<%= loan.qr_image.attached? ? loan.qr_image.filename.to_s : "" %>"
+           class="relative flex min-h-[160px] cursor-pointer flex-col items-center justify-center
+                  rounded-xl border-2 border-dashed border-gray-300 bg-gray-50
+                  transition hover:border-blue-400 hover:bg-blue-50"
+           onclick="document.getElementById('qr_image_input').click()">
+
+        <div id="qr-placeholder" class="flex flex-col items-center gap-2 text-center px-6 py-6">
+          <div class="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+            <svg class="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"/>
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z"/>
+            </svg>
+          </div>
+          <div>
+            <p class="text-sm font-semibold text-gray-700">Upload QR code</p>
+            <p class="mt-0.5 text-xs text-gray-400">Click or drag & drop · JPG, PNG, WEBP · max 5 MB</p>
+          </div>
+          <span class="mt-1 inline-flex items-center rounded-full bg-blue-600 px-4 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-blue-700 transition">
+            Choose File
+          </span>
+        </div>
+
+        <div id="qr-preview" class="hidden w-full p-4">
+          <div class="mx-auto max-w-[200px]">
+            <div class="overflow-hidden rounded-xl border border-gray-200 shadow">
+              <img id="qr-preview-img" src="" alt="QR preview" class="h-48 w-full object-contain object-center bg-white p-2">
+            </div>
+            <div class="mt-2 flex items-center justify-between">
+              <p id="qr-filename" class="truncate text-xs font-medium text-gray-700 max-w-[140px]">qr.png</p>
+              <button type="button"
+                      onclick="event.stopPropagation(); clearQrPreview()"
+                      class="flex h-7 w-7 items-center justify-center rounded-full bg-gray-100 text-gray-500
+                             hover:bg-red-100 hover:text-red-600 transition"
+                      title="Remove">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <%= f.file_field :qr_image,
+          id: "qr_image_input",
+          accept: "image/jpeg,image/png,image/webp",
+          class: "sr-only",
+          onchange: "handleQrUpload(this)" %>
+    </div>
+  </fieldset>
+
+  <%# ── Actions ── %>
+  <div class="flex items-center justify-end gap-3 border-t border-gray-100 pt-6">
+    <%= link_to "Cancel", customer_loans_path(@customer),
+        class: "rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700
+                shadow-sm hover:bg-gray-50 transition" %>
+    <%= f.submit(loan.persisted? ? "Update Loan" : "Add Loan",
+        class: "cursor-pointer rounded-lg bg-blue-600 px-6 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:scale-95 transition") %>
+  </div>
+
+<% end %>
+
+<%# ── Loan Form JS ── %>
+<script>
+document.addEventListener('turbo:load', () => {
+  // ── Interest rate: convert % ↔ decimal ──────────────────────────
+  const pctInput     = document.getElementById('interest_rate_pct');
+  const decimalInput = document.getElementById('interest_rate_decimal');
+  const monthsInput  = document.getElementById('total_months');
+
+  if (pctInput && decimalInput) {
+    pctInput.addEventListener('input', () => {
+      decimalInput.value = (parseFloat(pctInput.value || 0) / 100).toFixed(4);
+    });
+  }
+
+  // Auto-set interest % when months change (8% per month default)
+  if (monthsInput && pctInput && decimalInput) {
+    monthsInput.addEventListener('change', () => {
+      const months = parseInt(monthsInput.value || 2);
+      const rate   = (months * 8).toFixed(2);
+      pctInput.value     = rate;
+      decimalInput.value = (rate / 100).toFixed(4);
+    });
+  }
+  // Add this inside the existing document.addEventListener('turbo:load', () => { block,
+// after the interest rate listeners:
+
+const amountInput  = document.getElementById('loan_amount');
+const sessTypeInputs = document.querySelectorAll('input[name="loan[session_type]"]');
+
+function recalculate() {
+  const amount  = parseFloat(amountInput?.value) || 0;
+  const months  = parseInt(monthsInput?.value) || 2;
+  const ratePct = parseFloat(pctInput?.value) || (months * 8);
+  const rate    = ratePct / 100;
+
+  // Sessions per month: weekly=4, daily=26
+  const selectedType = document.querySelector('input[name="loan[session_type]"]:checked')?.value || 'weekly';
+  const sessPerMonth = selectedType === 'daily' ? 26 : 4;
+  const totalSessions = sessPerMonth * months;
+
+  const totalBalance   = amount * (1 + rate);
+  const payPerSession  = totalSessions > 0 ? Math.ceil((totalBalance / totalSessions) * 100) / 100 : 0;
+
+  // Maturity date: 29 days × months from today (approximation before date_issued is set)
+  const dateIssuedInput = document.querySelector('input[name="loan[date_issued]"]');
+  const baseDate = dateIssuedInput?.value ? new Date(dateIssuedInput.value) : new Date();
+  baseDate.setDate(baseDate.getDate() + (29 * months));
+  const maturityStr = baseDate.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  // Update the display fields
+  setText('calc-total-sessions',   totalSessions > 0 ? totalSessions : '—');
+  setText('calc-pay-per-session',  amount > 0 ? '₱' + fmt(payPerSession) : '—');
+  setText('calc-total-balance',    amount > 0 ? '₱' + fmt(totalBalance)  : '—');
+  setText('calc-remaining-balance',amount > 0 ? '₱' + fmt(totalBalance)  : '—');
+  setText('calc-maturity-date',    amount > 0 ? maturityStr : '—');
+}
+
+function setText(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = val;
+}
+
+function fmt(n) {
+  return n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// Trigger recalc on any relevant input change
+amountInput?.addEventListener('input', recalculate);
+monthsInput?.addEventListener('input', recalculate);
+pctInput?.addEventListener('input', recalculate);
+sessTypeInputs.forEach(r => r.addEventListener('change', recalculate));
+document.querySelector('input[name="loan[date_issued]"]')?.addEventListener('change', recalculate);
+
+// Run once on load to populate if editing
+recalculate();
+  // ── Proof of issue upload ────────────────────────────────────────
+  initImageUpload({
+    areaId:       'proof-upload-area',
+    placeholderId:'proof-placeholder',
+    previewId:    'proof-preview',
+    imgId:        'proof-preview-img',
+    filenameId:   'proof-filename',
+    filesizeId:   'proof-filesize',
+    inputId:      'proof_of_issue_input',
+    clearFn:      'clearProofPreview',
+    handleFn:     'handleProofUpload',
+  });
+
+  // ── QR image upload ─────────────────────────────────────────────
+  initImageUpload({
+    areaId:       'qr-upload-area',
+    placeholderId:'qr-placeholder',
+    previewId:    'qr-preview',
+    imgId:        'qr-preview-img',
+    filenameId:   'qr-filename',
+    filesizeId:   null,
+    inputId:      'qr_image_input',
+    clearFn:      'clearQrPreview',
+    handleFn:     'handleQrUpload',
+  });
+});
+
+function initImageUpload({ areaId, placeholderId, previewId, imgId, filenameId, filesizeId, inputId, clearFn, handleFn }) {
+  const area        = document.getElementById(areaId);
+  if (!area || area.dataset.bound === '1') return;
+  area.dataset.bound = '1';
+
+  const placeholder = document.getElementById(placeholderId);
+  const preview     = document.getElementById(previewId);
+  const previewImg  = document.getElementById(imgId);
+  const input       = document.getElementById(inputId);
+
+  // Preload existing
+  if (area.dataset.existingUrl) {
+    previewImg.src = area.dataset.existingUrl;
+    document.getElementById(filenameId).textContent = area.dataset.existingFilename || 'Existing file';
+    if (filesizeId) document.getElementById(filesizeId).textContent = 'Existing file';
+    placeholder.classList.add('hidden');
+    preview.classList.remove('hidden');
+  }
+
+  // Drag & drop
+  area.addEventListener('dragover', e => { e.preventDefault(); area.classList.add('border-blue-500','bg-blue-50'); });
+  area.addEventListener('dragleave', () => area.classList.remove('border-blue-500','bg-blue-50'));
+  area.addEventListener('drop', e => {
+    e.preventDefault();
+    area.classList.remove('border-blue-500','bg-blue-50');
+    const file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+      const dt = new DataTransfer(); dt.items.add(file); input.files = dt.files;
+      renderPreview(file);
+    }
+  });
+
+  window[handleFn] = el => { if (el.files?.[0]) renderPreview(el.files[0]); };
+  window[clearFn]  = () => {
+    input.value = '';
+    previewImg.src = '';
+    preview.classList.add('hidden');
+    placeholder.classList.remove('hidden');
+  };
+
+  function renderPreview(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewImg.src = e.target.result;
+      document.getElementById(filenameId).textContent = file.name;
+      if (filesizeId) document.getElementById(filesizeId).textContent = formatBytes(file.size);
+      placeholder.classList.add('hidden');
+      preview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+function formatBytes(b) {
+  if (b < 1024)    return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+</script>

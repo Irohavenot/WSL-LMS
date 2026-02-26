@@ -20,7 +20,9 @@ Rails.application.routes.draw do
   get 'dashboard/reports', to: 'dashboard#reports'
 
   #customers
-  resources :customers
+    resources :customers do
+    resources :loans, shallow: true
+  end
   # Health check
   get "up" => "rails/health#show", as: :rails_health_check
 end
