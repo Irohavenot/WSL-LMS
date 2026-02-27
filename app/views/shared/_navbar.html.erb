@@ -34,6 +34,17 @@
             Loans
           </span>
         <% end %>
+
+        <%= link_to dashboard_payments_path,
+          class: "px-4 py-2 rounded-lg hover:bg-blue-700 transition #{current_page?(dashboard_payments_path) ? 'bg-blue-700' : ''}" do %>
+          <span class="flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M9 12h6m-6 4h6M7 4h10a2 2 0 012 2v12a2 2 0 01-2 2H7a2 2 0 01-2-2V6a2 2 0 012-2z" />
+            </svg>
+            Payments
+          </span>
+        <% end %>
         
         <%= link_to dashboard_records_path, class: "px-4 py-2 rounded-lg hover:bg-blue-700 transition #{current_page?(dashboard_records_path) ? 'bg-blue-700' : ''}" do %>
           <span class="flex items-center">
@@ -55,15 +66,18 @@
       </div>
 
       <% if current_user %>
-        <div class="text-xs text-yellow">
-          Logged in as <span class="font-semibold"><%= current_user.full_name %></span>
+        <div class="hidden md:flex flex-col items-end text-right mr-4">
+          <span class="text-sm font-semibold">
+            <%= current_user.full_name %>
+          </span>
+          <span class="text-xs text-blue-100">
+            <%= current_user.email %>
+          </span>
         </div>
       <% end %>
-      
-      <!-- User Menu -->
-      <div class="flex items-center space-x-4">
-        <span class="hidden md:block text-sm "><%= current_user.email %></span>
-        <%= button_to "Logout", logout_path, method: :delete, 
+
+      <div class="flex items-center">
+        <%= button_to "Logout", logout_path, method: :delete,
             class: "px-4 py-2 bg-red-500 hover:bg-red-600 rounded-lg transition font-semibold" %>
       </div>
     </div>

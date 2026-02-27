@@ -85,6 +85,11 @@
             class: "rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" %>
         <%= link_to "Edit Loan", edit_loan_path(@loan),
             class: "rounded-lg bg-blue-600 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-700 transition" %>
+        <%= link_to "View Payments", loan_payments_path(@loan),
+        class: "rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition" %>
+
+       <%= link_to "Add Payment", new_loan_payment_path(@loan),
+        class: "rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700 transition" %>
       </div>
     </div>
 

@@ -1,0 +1,24 @@
+<%= render "shared/navbar" %>
+
+<div class="min-h-screen bg-gray-50 py-10">
+  <div class="mx-auto max-w-3xl px-4">
+    <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
+        <h1 class="text-lg font-bold text-gray-900">Add Payment</h1>
+        <p class="text-xs text-gray-400">
+          Loan #<%= @loan.id %> • Pay per session: ₱<%= number_with_precision(@loan.pay_per_session, precision: 2, delimiter: ",") %> •
+          Remaining: ₱<%= number_with_precision(@loan.remaining_balance, precision: 2, delimiter: ",") %>
+        </p>
+      </div>
+
+      <div class="p-6">
+        <%= render "form", loan: @loan, payment: @payment %>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50 px-6 py-4">
+        <%= link_to "← Back", loan_payments_path(@loan),
+            class: "rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" %>
+      </div>
+    </div>
+  </div>
+</div>

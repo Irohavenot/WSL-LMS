@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  loan: one
+  amount_paid: 9.99
+  penalty: 9.99
+  paid_at: 2026-02-27 09:28:13
+  collector: MyString
+
+two:
+  loan: two
+  amount_paid: 9.99
+  penalty: 9.99
+  paid_at: 2026-02-27 09:28:13
+  collector: MyString

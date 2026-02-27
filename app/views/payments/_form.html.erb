@@ -1,0 +1,152 @@
+<%
+  # Determine if this is a new record
+  is_new = payment.new_record?
+%>
+
+<%= form_with model: [loan, payment], class: "space-y-6" do |f| %>
+
+  <% if payment.errors.any? %>
+    <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700">
+      <p class="font-semibold mb-2">Please fix the following:</p>
+      <ul class="list-disc ml-5 text-sm space-y-0.5">
+        <% payment.errors.full_messages.each do |msg| %>
+          <li><%= msg %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
+  <!-- ── Session Info Banner ──────────────────────────────────── -->
+  <div class="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700 flex items-start gap-2">
+    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20A10 10 0 0012 2z"/>
+    </svg>
+    <div>
+      <strong>Session Date</strong> is the date this payment <em>counts toward</em> (the scheduled collection day).
+      <strong>Received On</strong> is when the cash was actually handed over — useful for advance payments.
+      If left blank, Received On defaults to today.
+    </div>
+  </div>
+
+  <!-- ── Core Fields ───────────────────────────────────────────── -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+    <!-- Amount Paid -->
+    <div>
+      <%= f.label :amount_paid, class: "block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1" do %>
+        Amount Paid <span class="text-red-400">*</span>
+      <% end %>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">₱</span>
+        <%= f.number_field :amount_paid, step: 0.01, min: 0,
+            placeholder: "0.00",
+            class: "w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent" %>
+      </div>
+      <p class="mt-1 text-[11px] text-gray-400">
+        Expected: ₱<%= number_with_precision(loan.pay_per_session, precision: 2, delimiter: ",") %> per session
+      </p>
+    </div>
+
+    <!-- Penalty -->
+    <div>
+      <%= f.label :penalty, class: "block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1" do %>
+        Penalty <span class="font-normal normal-case text-gray-400">(optional)</span>
+      <% end %>
+      <div class="relative">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-semibold text-sm">₱</span>
+        <%= f.number_field :penalty, step: 0.01, min: 0,
+            placeholder: "0.00",
+            class: "w-full rounded-xl border border-gray-200 bg-white pl-8 pr-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent" %>
+      </div>
+      <p class="mt-1 text-[11px] text-gray-400">Leave blank to auto-calculate: max(PPS − Amount Paid, 0)</p>
+    </div>
+
+    <!-- Session Date (paid_at) — auto-set to today's date at noon, editable for advance payments -->
+    <div>
+      <%= f.label :paid_at, class: "block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1" do %>
+        Session Date <span class="text-red-400">*</span>
+      <% end %>
+      <%= f.datetime_local_field :paid_at,
+          value: (payment.paid_at || Time.current).strftime("%Y-%m-%dT%H:%M"),
+          class: "w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent" %>
+      <p class="mt-1 text-[11px] text-gray-400">The scheduled session this payment covers. Change for advance/back-dated payments.</p>
+    </div>
+
+    <!-- Received On (received_at) — always today by default -->
+    <div>
+      <%= f.label :received_at, class: "block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1" do %>
+        Received On
+        <span class="font-normal normal-case text-gray-400">(defaults to today)</span>
+      <% end %>
+      <%= f.datetime_local_field :received_at,
+          value: (payment.try(:received_at) || Time.current).strftime("%Y-%m-%dT%H:%M"),
+          class: "w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-transparent" %>
+      <p class="mt-1 text-[11px] text-gray-400">When the cash was physically received. For accountability and audit.</p>
+    </div>
+
+    <!-- Collector (read-only) -->
+    <div class="sm:col-span-2">
+      <%= f.label :collector, class: "block text-xs font-semibold uppercase tracking-widest text-gray-400 mb-1" %>
+      <div class="flex items-center gap-2">
+        <div class="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold shrink-0">
+          <%= payment.collector&.first&.upcase || "?" %>
+        </div>
+        <%= f.text_field :collector,
+            class: "flex-1 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2.5 text-sm text-gray-600 cursor-not-allowed",
+            readonly: true %>
+      </div>
+      <p class="mt-1 text-[11px] text-gray-400">Auto-filled from the logged-in user. Cannot be changed.</p>
+    </div>
+  </div>
+
+  <!-- ── Remaining Balance Preview ─────────────────────────────── -->
+  <div class="rounded-xl border border-gray-100 bg-gray-50 px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-0.5">Current Remaining Balance</p>
+      <p class="text-xl font-bold text-gray-900">
+        ₱<%= number_with_precision(loan.remaining_balance, precision: 2, delimiter: ",") %>
+      </p>
+    </div>
+    <div class="text-xs text-gray-400 sm:text-right">
+      <p>Pay per session: ₱<%= number_with_precision(loan.pay_per_session, precision: 2, delimiter: ",") %></p>
+      <p class="mt-0.5">Balance updates after saving.</p>
+    </div>
+  </div>
+
+  <!-- ── Actions ───────────────────────────────────────────────── -->
+  <div class="flex items-center justify-end gap-3 pt-1">
+    <%= link_to "Cancel", loan_payments_path(loan),
+        class: "rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" %>
+    <%= f.submit is_new ? "Record Payment" : "Update Payment",
+        class: "rounded-xl bg-gray-900 px-6 py-2.5 text-sm font-semibold text-white hover:bg-black transition shadow-sm cursor-pointer" %>
+  </div>
+<% end %>
+
+<script>
+  // Auto-sync: if Session Date is in the future relative to Received On, highlight it
+  (function() {
+    const paidAt     = document.querySelector('input[name="payment[paid_at]"]');
+    const receivedAt = document.querySelector('input[name="payment[received_at]"]');
+    const banner     = document.createElement('p');
+    banner.className = 'text-[11px] text-blue-600 font-semibold mt-1 hidden';
+    banner.textContent = '⏩ Advance payment — session date is in the future relative to received date.';
+
+    if (paidAt && receivedAt) {
+      receivedAt.parentElement.appendChild(banner);
+
+      function checkAdvance() {
+        const session  = new Date(paidAt.value);
+        const received = new Date(receivedAt.value);
+        if (session > received) {
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
+      }
+
+      paidAt.addEventListener('change', checkAdvance);
+      receivedAt.addEventListener('change', checkAdvance);
+      checkAdvance();
+    }
+  })();
+</script>

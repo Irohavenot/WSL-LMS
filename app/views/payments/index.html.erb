@@ -1,0 +1,344 @@
+<%= render 'shared/navbar' %>
+
+<style>
+  .stat-card { transition: box-shadow 0.15s; }
+  .stat-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.07); }
+  .tab-btn { transition: all 0.15s; }
+  .tab-btn.active { background: #111827; color: #fff; }
+  .tab-btn:not(.active) { color: #6b7280; }
+  .tab-btn:not(.active):hover { background: #f3f4f6; color: #111827; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; letter-spacing: 0.02em;
+  }
+  .progress-bar-track { background: #e5e7eb; border-radius: 999px; height: 6px; overflow: hidden; }
+  .progress-bar-fill  { border-radius: 999px; height: 6px; transition: width 0.4s ease; }
+</style>
+
+<div class="min-h-screen bg-gray-50 py-10">
+  <div class="mx-auto max-w-6xl px-4">
+
+    <!-- ── Header ─────────────────────────────────────────────── -->
+    <div class="mb-8 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <%= link_to loan_path(@loan), class: "text-gray-400 hover:text-gray-600 text-sm flex items-center gap-1 transition" do %>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+            Back to Loan #<%= @loan.id %>
+          <% end %>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">Payment Records</h1>
+        <p class="mt-1 text-sm text-gray-500">
+          <%= @loan.customer.last_name %>, <%= @loan.customer.first_name %> &nbsp;·&nbsp;
+          Loan #<%= @loan.id %>
+        </p>
+      </div>
+
+      <%= link_to new_loan_payment_path(@loan),
+          class: "self-start rounded-xl bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white hover:bg-black transition shadow-sm" do %>
+        + Record Payment
+      <% end %>
+    </div>
+
+    <!-- ── Stat Cards ──────────────────────────────────────────── -->
+    <%
+      total_sessions   = @loan.term  rescue @payments.size   # fallback
+      sessions_paid    = @loan.payments.count
+      pct              = total_sessions > 0 ? [(sessions_paid.to_f / total_sessions * 100).round, 100].min : 0
+      remaining        = @loan.remaining_balance.to_d
+      total_loan       = @loan.principal.to_d rescue 0
+      total_paid_all   = @loan.payments.sum(:amount_paid).to_d
+      total_penalty_all= @loan.payments.sum(:penalty).to_d
+    %>
+
+    <div class="mb-8 grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Remaining Balance -->
+      <div class="stat-card col-span-2 lg:col-span-1 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Remaining Balance</p>
+        <p class="text-2xl font-bold <%= remaining > 0 ? 'text-red-600' : 'text-green-600' %>">
+          ₱<%= number_with_precision(remaining, precision: 2, delimiter: ",") %>
+        </p>
+        <% if total_loan > 0 %>
+          <div class="mt-3 progress-bar-track">
+            <div class="progress-bar-fill <%= remaining > 0 ? 'bg-green-500' : 'bg-green-400' %>"
+                 style="width: <%= pct %>%"></div>
+          </div>
+          <p class="mt-1 text-[11px] text-gray-400"><%= pct %>% of sessions completed</p>
+        <% end %>
+      </div>
+
+      <!-- Pay Per Session -->
+      <div class="stat-card rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Pay / Session</p>
+        <p class="text-2xl font-bold text-gray-900">
+          ₱<%= number_with_precision(@loan.pay_per_session, precision: 2, delimiter: ",") %>
+        </p>
+        <p class="mt-1 text-[11px] text-gray-400"><%= sessions_paid %> sessions recorded</p>
+      </div>
+
+      <!-- Total Collected (filtered) -->
+      <div class="stat-card rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Collected <span class="normal-case">(filtered)</span></p>
+        <p class="text-2xl font-bold text-gray-900">
+          ₱<%= number_with_precision(@total_paid || 0, precision: 2, delimiter: ",") %>
+        </p>
+        <p class="mt-1 text-[11px] text-gray-400">of ₱<%= number_with_precision(total_paid_all, precision: 2, delimiter: ",") %> total</p>
+      </div>
+
+      <!-- Total Penalty (filtered) -->
+      <div class="stat-card rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <p class="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Penalties <span class="normal-case">(filtered)</span></p>
+        <p class="text-2xl font-bold <%= (@total_penalty || 0) > 0 ? 'text-red-600' : 'text-gray-900' %>">
+          ₱<%= number_with_precision(@total_penalty || 0, precision: 2, delimiter: ",") %>
+        </p>
+        <p class="mt-1 text-[11px] text-gray-400">of ₱<%= number_with_precision(total_penalty_all, precision: 2, delimiter: ",") %> total</p>
+      </div>
+    </div>
+
+    <!-- ── Filters ─────────────────────────────────────────────── -->
+    <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+      <%= form_with url: loan_payments_path(@loan), method: :get, local: true,
+          class: "grid grid-cols-1 md:grid-cols-4 gap-3 items-end" do |f| %>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Month</label>
+          <%= month_field_tag :month, params[:month],
+              class: "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" %>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Collector</label>
+          <%= text_field_tag :q, params[:q], placeholder: "Search collector…",
+              class: "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" %>
+        </div>
+        <div>
+          <label class="block text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-1">Sort</label>
+          <%= select_tag :sort,
+              options_for_select([["Newest first", "newest"], ["Oldest first", "oldest"]], params[:sort]),
+              class: "w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" %>
+        </div>
+        <div class="flex gap-2">
+          <%= f.submit "Apply",
+              class: "w-full rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black transition" %>
+          <%= link_to "Reset", loan_payments_path(@loan),
+              class: "w-full text-center rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-50 transition" %>
+        </div>
+      <% end %>
+    </div>
+
+    <!-- ── Tab Toggle ──────────────────────────────────────────── -->
+    <div class="mb-5 flex items-center gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+      <button class="tab-btn active rounded-lg px-4 py-1.5 text-sm font-semibold" onclick="switchTab('received', this)">
+        By Date Received
+      </button>
+      <button class="tab-btn rounded-lg px-4 py-1.5 text-sm font-semibold" onclick="switchTab('session', this)">
+        By Session Date
+      </button>
+    </div>
+
+    <!-- ── Table: By Date Received ─────────────────────────────── -->
+    <div id="tab-received">
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div class="border-b border-gray-100 bg-gray-50 px-6 py-4 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-semibold text-gray-800">Payments — By Date Received</h2>
+            <p class="text-xs text-gray-400">
+              Showing <%= @payments.size %> record(s)<%= params[:month].present? ? " for #{params[:month]}" : "" %> •
+              Sorted by when cash was physically received
+            </p>
+          </div>
+        </div>
+
+        <% if @payments.any? %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th class="px-6 py-3 text-left font-semibold">#</th>
+                  <th class="px-6 py-3 text-left font-semibold">Received On</th>
+                  <th class="px-6 py-3 text-left font-semibold">For Session</th>
+                  <th class="px-6 py-3 text-left font-semibold">Collector</th>
+                  <th class="px-6 py-3 text-right font-semibold">Amount Paid</th>
+                  <th class="px-6 py-3 text-right font-semibold">Penalty</th>
+                  <th class="px-6 py-3 text-right font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% @payments.each_with_index do |p, i| %>
+                  <%
+                    pps    = @loan.pay_per_session.to_d
+                    amt    = p.amount_paid.to_d
+                    pen    = p.penalty.to_d
+                    status = amt >= pps ? :complete : (amt > 0 ? :partial : :none)
+                    # received_at is the physical receipt date; paid_at is the session it covers
+                    received = p.respond_to?(:received_at) && p.received_at.present? ? p.received_at : p.paid_at
+                    session_date = p.paid_at
+                    advance = received && session_date && received.to_date < session_date.to_date
+                  %>
+                  <tr class="hover:bg-gray-50/60 transition">
+                    <td class="px-6 py-3.5 text-gray-400 text-xs font-mono"><%= i + 1 %></td>
+
+                    <td class="px-6 py-3.5">
+                      <div class="font-medium text-gray-800"><%= received&.strftime("%b %d, %Y") || "—" %></div>
+                      <div class="text-xs text-gray-400"><%= received&.strftime("%I:%M %p") %></div>
+                    </td>
+
+                    <td class="px-6 py-3.5">
+                      <div class="font-medium text-gray-800"><%= session_date&.strftime("%b %d, %Y") || "—" %></div>
+                      <% if advance %>
+                        <span class="status-pill bg-blue-50 text-blue-600">⏩ Advance</span>
+                      <% end %>
+                    </td>
+
+                    <td class="px-6 py-3.5 text-gray-700"><%= p.collector.presence || "—" %></td>
+
+                    <td class="px-6 py-3.5 text-right font-bold text-gray-900">
+                      ₱<%= number_with_precision(amt, precision: 2, delimiter: ",") %>
+                    </td>
+
+                    <td class="px-6 py-3.5 text-right <%= pen > 0 ? 'font-semibold text-red-600' : 'text-gray-400' %>">
+                      <%= pen > 0 ? "₱#{number_with_precision(pen, precision: 2, delimiter: ',')}" : "—" %>
+                    </td>
+
+                    <td class="px-6 py-3.5 text-right">
+                      <% if status == :complete %>
+                        <span class="status-pill bg-green-50 text-green-700">✓ Complete</span>
+                      <% elsif status == :partial %>
+                        <span class="status-pill bg-orange-50 text-orange-600">⚠ Partial</span>
+                      <% else %>
+                        <span class="status-pill bg-red-50 text-red-600">✗ None</span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+              <tfoot class="bg-gray-50 border-t border-gray-200">
+                <tr>
+                  <td colspan="4" class="px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Totals (filtered)</td>
+                  <td class="px-6 py-3 text-right font-bold text-gray-900">
+                    ₱<%= number_with_precision(@total_paid || 0, precision: 2, delimiter: ",") %>
+                  </td>
+                  <td class="px-6 py-3 text-right font-bold <%= (@total_penalty || 0) > 0 ? 'text-red-600' : 'text-gray-400' %>">
+                    ₱<%= number_with_precision(@total_penalty || 0, precision: 2, delimiter: ",") %>
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        <% else %>
+          <div class="py-16 text-center">
+            <div class="text-4xl mb-3">📭</div>
+            <p class="text-gray-500 font-medium">No payments found</p>
+            <p class="text-sm text-gray-400 mt-1">Try adjusting your filters or record a new payment.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- ── Table: By Session Date ──────────────────────────────── -->
+    <div id="tab-session" class="hidden">
+      <%
+        # Group payments by the session date (paid_at day)
+        by_session = @payments.group_by { |p| p.paid_at&.to_date }
+        sorted_sessions = by_session.keys.compact.sort
+        sorted_sessions = sorted_sessions.reverse if (params[:sort] || "newest") == "newest"
+      %>
+      <div class="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+        <div class="border-b border-gray-100 bg-gray-50 px-6 py-4">
+          <h2 class="text-sm font-semibold text-gray-800">Payments — By Session Date</h2>
+          <p class="text-xs text-gray-400">
+            Grouped by the session they cover • Advance payments appear on their future session date
+          </p>
+        </div>
+
+        <% if sorted_sessions.any? %>
+          <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-gray-500 border-b border-gray-100">
+                <tr>
+                  <th class="px-6 py-3 text-left font-semibold">Session Date</th>
+                  <th class="px-6 py-3 text-left font-semibold">Received On</th>
+                  <th class="px-6 py-3 text-left font-semibold">Collector</th>
+                  <th class="px-6 py-3 text-right font-semibold">Amount Paid</th>
+                  <th class="px-6 py-3 text-right font-semibold">Expected</th>
+                  <th class="px-6 py-3 text-right font-semibold">Penalty</th>
+                  <th class="px-6 py-3 text-right font-semibold">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <% sorted_sessions.each do |session_date| %>
+                  <% session_payments = by_session[session_date] %>
+                  <% session_total = session_payments.sum { |p| p.amount_paid.to_d } %>
+                  <% session_penalty = session_payments.sum { |p| p.penalty.to_d } %>
+                  <% pps = @loan.pay_per_session.to_d %>
+                  <% status = session_total >= pps ? :complete : (session_total > 0 ? :partial : :none) %>
+
+                  <% session_payments.each_with_index do |p, idx| %>
+                    <% received = p.respond_to?(:received_at) && p.received_at.present? ? p.received_at : p.paid_at %>
+                    <% advance = received && received.to_date < session_date %>
+                    <tr class="hover:bg-gray-50/60 transition <%= idx == 0 ? '' : 'opacity-70' %>">
+
+                      <% if idx == 0 %>
+                        <td class="px-6 py-3.5" rowspan="<%= session_payments.size %>">
+                          <div class="font-semibold text-gray-900"><%= session_date.strftime("%b %d, %Y") %></div>
+                          <div class="text-xs text-gray-400"><%= session_date.strftime("%A") %></div>
+                        </td>
+                      <% end %>
+
+                      <td class="px-6 py-3.5">
+                        <div class="text-gray-800"><%= received&.strftime("%b %d, %Y") || "—" %></div>
+                        <% if advance %>
+                          <span class="status-pill bg-blue-50 text-blue-600">⏩ Advance</span>
+                        <% end %>
+                      </td>
+
+                      <td class="px-6 py-3.5 text-gray-600"><%= p.collector.presence || "—" %></td>
+
+                      <td class="px-6 py-3.5 text-right font-bold text-gray-900">
+                        ₱<%= number_with_precision(p.amount_paid.to_d, precision: 2, delimiter: ",") %>
+                      </td>
+
+                      <% if idx == 0 %>
+                        <td class="px-6 py-3.5 text-right text-gray-500" rowspan="<%= session_payments.size %>">
+                          ₱<%= number_with_precision(pps, precision: 2, delimiter: ",") %>
+                        </td>
+                        <td class="px-6 py-3.5 text-right font-semibold <%= session_penalty > 0 ? 'text-red-600' : 'text-gray-400' %>" rowspan="<%= session_payments.size %>">
+                          <%= session_penalty > 0 ? "₱#{number_with_precision(session_penalty, precision: 2, delimiter: ',')}" : "—" %>
+                        </td>
+                        <td class="px-6 py-3.5 text-right" rowspan="<%= session_payments.size %>">
+                          <% if status == :complete %>
+                            <span class="status-pill bg-green-50 text-green-700">✓ Complete</span>
+                          <% elsif status == :partial %>
+                            <span class="status-pill bg-orange-50 text-orange-600">⚠ Partial</span>
+                          <% else %>
+                            <span class="status-pill bg-red-50 text-red-600">✗ None</span>
+                          <% end %>
+                        </td>
+                      <% end %>
+                    </tr>
+                  <% end %>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% else %>
+          <div class="py-16 text-center">
+            <div class="text-4xl mb-3">📭</div>
+            <p class="text-gray-500 font-medium">No sessions found</p>
+            <p class="text-sm text-gray-400 mt-1">Try adjusting your filters or record a new payment.</p>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  function switchTab(name, btn) {
+    document.getElementById('tab-received').classList.add('hidden');
+    document.getElementById('tab-session').classList.add('hidden');
+    document.getElementById('tab-' + name).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>

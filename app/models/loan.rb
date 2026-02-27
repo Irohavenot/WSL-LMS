@@ -3,6 +3,7 @@ class Loan < ApplicationRecord
   belongs_to :customer
   belongs_to :added_by,  class_name: "User"
   belongs_to :issued_by, class_name: "User", optional: true
+  has_many :payments, dependent: :destroy
 
   has_one_attached :proof_of_issue
   has_one_attached :qr_image
